@@ -1,164 +1,136 @@
 # Container AI - MCP Server
 
-A Model Context Protocol (MCP) server that identifies, builds, and scans Dockerfiles for security vulnerabilities using Trivy.
+Docker security scanner with automated vulnerability patching via Trivy + Copacetic.
 
-## Overview
-
-This ultra-minimal MCP server provides comprehensive Docker security analysis:
-
-1. **Identifies** all Dockerfiles in a repository
-2. **Builds** Docker images from each Dockerfile  
-3. **Scans** images with Trivy for vulnerabilities
-4. **Analyzes** vulnerabilities by severity and dependency type (OS vs Application)
-
-## File Structure
-
-```
-mcp-docker/
-├── server.py           # Complete MCP server implementation (single file)
-├── requirements.txt    # Minimal dependencies
-├── README.md          # This documentation
-└── .gitignore         # Git ignore rules
-```
-
-**Total: 3 core files** - Ultra-minimal implementation!
-
-## Prerequisites
-
-Install required system dependencies:
+## Quick Start
 
 ```bash
-# Install Docker (if not installed)
-brew install docker
+# Install dependencies
+brew install docker trivy
+npm install -g @copacetic/cli
 
-# Install Trivy vulnerability scanner
-brew install trivy
-
-# Verify installations
-docker --version
-trivy --version
-```
-
-## Installation
-
-1. Install Python dependencies:
-```bash
+# Install Python deps & run
 pip install -r requirements.txt
+python3 server.py
 ```
 
-## Usage
+Server runs on: `http://localhost:8000/mcp`
 
-### Running the Server
+## VS Code Setup (Local HTTPS MCP)
 
-The server uses HTTP Streamable transport:
+To use this MCP server with VS Code Copilot on another repository:
 
-```bash
-python server.py
-```
+1. **Start the server** (in this repo):
+   ```bash
+   cd /path/to/container-ai
+   python3 server.py
+   ```
 
-Server will start on `http://localhost:8000/mcp`
+2. **Add MCP configuration** to your target repo's `.vscode/mcp.json`:
+   ```json
+   {
+     "mcpServers": {
+       "container-ai": {
+         "command": "node",
+         "args": ["-e", "require('node-fetch')('http://localhost:8000/mcp').then(r=>r.json()).then(console.log)"],
+         "transport": {
+           "type": "http",
+           "url": "http://localhost:8000/mcp"
+         }
+       }
+     }
+   }
+   ```
 
-### Tool Available
+3. **Restart VS Code** or reload the window
 
-#### `scan_dockerfiles_security`
+4. **Use with Copilot**:
+   - Ask: "Scan this repo for Docker vulnerabilities"
+   - Or: "Check Docker security and apply patches"
 
-Performs complete security analysis of Dockerfiles in a repository.
+## Tool: `scan_dockerfiles_security`
 
 **Parameters:**
-- `repo_path` (string, required): Path to the repository to scan
-- `severity_filter` (array, optional): Filter by severity levels (e.g., `["CRITICAL", "HIGH"]`)
+- `repo_path` (required): Repository path
+- `severity_filter` (optional): `["CRITICAL", "HIGH"]`
+- `apply_patches` (optional): `true` to auto-fix vulnerabilities
 
-**Returns:**
-Comprehensive vulnerability analysis with:
-- Total vulnerabilities found
-- Breakdown by severity (CRITICAL, HIGH, MEDIUM, LOW)
-- Categorization by OS packages vs Application dependencies
-- Top critical vulnerabilities with details
-
-**Example Usage:**
+**Example:**
 ```json
 {
   "name": "scan_dockerfiles_security",
   "arguments": {
-    "repo_path": "/path/to/your/repository",
-    "severity_filter": ["CRITICAL", "HIGH"]
+    "repo_path": "/path/to/repo",
+    "apply_patches": true
   }
 }
 ```
 
-**Example Output:**
+**Output:**
 ```json
 {
-  "dockerfiles_found": 2,
-  "scan_results": [
-    {
-      "dockerfile": "Dockerfile",
-      "image_tag": "mcp-scan-123456",
-      "build_status": "success",
-      "vulnerabilities": {
-        "total": 15,
-        "severity_breakdown": {
-          "CRITICAL": 2,
-          "HIGH": 5,
-          "MEDIUM": 8,
-          "LOW": 0
-        },
-        "by_type": {
-          "os_packages": {
-            "count": 10,
-            "packages": ["openssl", "curl", "bash"]
-          },
-          "application_deps": {
-            "count": 5,
-            "packages": ["npm:lodash", "pip:requests"]
-          }
-        },
-        "top_critical": [
-          {
-            "vulnerability_id": "CVE-2024-1234",
-            "package": "openssl",
-            "severity": "CRITICAL",
-            "description": "Remote code execution vulnerability...",
-            "fixed_version": "1.1.1w"
-          }
-        ]
+  "dockerfiles_found": 1,
+  "scan_results": [{
+    "dockerfile": "Dockerfile",
+    "vulnerabilities": {
+      "total": 169,
+      "severity_breakdown": {"CRITICAL": 2, "HIGH": 17, "MEDIUM": 54},
+      "patching_results": {
+        "status": "applied",
+        "original_vulnerabilities": 169,
+        "remaining_vulnerabilities": 134,
+        "fixed_count": 35,
+        "packages_validated": 8
+      },
+      "after_patching": {
+        "total": 134,
+        "severity_breakdown": {"CRITICAL": 0, "HIGH": 12, "MEDIUM": 48}
       }
     }
-  ]
+  }]
 }
 ```
 
-## Features
+## What It Does
 
-- **Complete Pipeline**: Find → Build → Scan → Analyze in one tool
-- **Trivy Integration**: Industry-standard vulnerability scanner
-- **Smart Categorization**: OS packages vs Application dependencies
-- **Severity Filtering**: Focus on critical/high severity issues
-- **Error Handling**: Graceful failure handling with informative messages
-- **Automatic Cleanup**: Removes built images after scanning
-- **Timeout Protection**: Prevents hanging builds/scans
+1. **Finds** Dockerfiles in repo
+2. **Builds** Docker images  
+3. **Scans** with Trivy
+4. **Patches** vulnerabilities (optional)
+5. **Re-scans** to verify fixes
+6. **Reports** before/after results
 
-## Client Connection Example
+That's it! 🚀
 
-```python
-from mcp import ClientSession
-from mcp.client.streamable_http import streamablehttp_client
+## How Container Patching Works
 
-async with streamablehttp_client("http://localhost:8000/mcp") as (read, write, _):
-    async with ClientSession(read, write) as session:
-        await session.initialize()
-        
-        result = await session.call_tool("scan_dockerfiles_security", {
-            "repo_path": "/path/to/repository",
-            "severity_filter": ["CRITICAL", "HIGH"]
-        })
-        
-        print(f"Found {result.content[0].text}")
+When you use `apply_patches: true`, here's what happens behind the scenes:
+
+### 1. **Image Build & Initial Scan**
+```bash
+docker build -t mcp-scan-{hash} -f Dockerfile .
+trivy image --format json mcp-scan-{hash}
 ```
 
-## Requirements
+### 2. **Copacetic Patching Process**
+- Copa analyzes the Trivy vulnerability report
+- Downloads security patches for vulnerable packages  
+- Creates a **NEW Docker image** with patches applied
+- Tags it as `mcp-scan-{hash}:patched`
 
-- Python 3.8+
-- MCP Python SDK
-- Docker (system requirement)
-- Trivy (system requirement)
+### 3. **Verification Scan**
+```bash
+trivy image --format json mcp-scan-{hash}:patched
+```
+
+### ⚠️ **Important Notes**
+- **Your Dockerfile is NOT modified** - source code stays unchanged
+- Patching happens at the **image layer level**
+- Both images are cleaned up after analysis
+- This is a **security assessment tool**, not a permanent fix
+
+### 🏗️ **For Production Use**
+To use patched images in production:
+1. Integrate Copa into your CI/CD pipeline
+2. Save patched images: `docker save mcp-scan-{hash}:patched`
+3. Update Dockerfiles manually with security fixes
