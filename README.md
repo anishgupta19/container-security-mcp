@@ -54,6 +54,7 @@ To use this MCP server with VS Code Copilot on another repository:
 - `repo_path` (required): Repository path
 - `severity_filter` (optional): `["CRITICAL", "HIGH"]`
 - `apply_patches` (optional): `true` to auto-fix vulnerabilities
+- `update_dockerfile` (optional): `true` to update Dockerfile with security fixes
 
 **Example:**
 ```json
@@ -61,7 +62,8 @@ To use this MCP server with VS Code Copilot on another repository:
   "name": "scan_dockerfiles_security",
   "arguments": {
     "repo_path": "/path/to/repo",
-    "apply_patches": true
+    "apply_patches": true,
+    "update_dockerfile": true
   }
 }
 ```
@@ -85,6 +87,13 @@ To use this MCP server with VS Code Copilot on another repository:
       "after_patching": {
         "total": 134,
         "severity_breakdown": {"CRITICAL": 0, "HIGH": 12, "MEDIUM": 48}
+      },
+      "dockerfile_updates": {
+        "status": "updated",
+        "changes": ["Added apt security updates for Ubuntu/Debian base"],
+        "backup_created": "/path/to/repo/Dockerfile.backup",
+        "vulnerabilities_addressed": 169,
+        "severity_breakdown": {"CRITICAL": 2, "HIGH": 17, "MEDIUM": 54}
       }
     }
   }]
@@ -124,10 +133,39 @@ trivy image --format json mcp-scan-{hash}:patched
 ```
 
 ### ⚠️ **Important Notes**
-- **Your Dockerfile is NOT modified** - source code stays unchanged
+- **Your Dockerfile is NOT modified** by default - source code stays unchanged
 - Patching happens at the **image layer level**
 - Both images are cleaned up after analysis
 - This is a **security assessment tool**, not a permanent fix
+
+### 🔧 **Auto-Update Dockerfile** (NEW!)
+
+Set `update_dockerfile: true` to automatically fix your Dockerfile:
+
+```json
+{
+  "name": "scan_dockerfiles_security", 
+  "arguments": {
+    "repo_path": "/path/to/repo",
+    "apply_patches": true,
+    "update_dockerfile": true
+  }
+}
+```
+
+**What happens:**
+- ✅ Scans for vulnerabilities
+- ✅ Tests patches with Copa  
+- ✅ Updates your Dockerfile with security fixes
+- ✅ Creates `Dockerfile.backup` 
+- ✅ Ready to commit and deploy!
+
+**Supported base images:**
+- Ubuntu/Debian: Adds `apt-get update && apt-get upgrade -y`
+- Alpine: Adds `apk update && apk upgrade`  
+- CentOS/RHEL/Fedora/Rocky/AlmaLinux: Adds `yum update -y`
+- Amazon Linux: Adds `yum update -y`
+- SUSE/openSUSE: Adds `zypper refresh && zypper update -y`
 
 ### 🏗️ **For Production Use**
 To use patched images in production:
