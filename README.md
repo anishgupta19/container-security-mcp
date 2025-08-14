@@ -3,7 +3,7 @@
 
 Below is a screenshot showing the `.vscode/mcp.json` configuration and the security scan results in VS Code:
 
-![VS Code MCP & Security Scan Preview](https://user-images.githubusercontent.com/your-screenshot-path/vscode-mcp-security-scan.png)
+![VS Code MCP & Security Scan Preview](image.png)
 
 **Highlights:**
 - MCP server configured in `.vscode/mcp.json`
