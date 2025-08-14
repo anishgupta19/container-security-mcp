@@ -1,4 +1,17 @@
 # Container AI - MCP Server
+## Preview: VS Code MCP Integration & Security Scan
+
+Below is a screenshot showing the `.vscode/mcp.json` configuration and the security scan results in VS Code:
+
+![VS Code MCP & Security Scan Preview](https://user-images.githubusercontent.com/your-screenshot-path/vscode-mcp-security-scan.png)
+
+**Highlights:**
+- MCP server configured in `.vscode/mcp.json`
+- Security scan results for multiple Dockerfiles
+- Vulnerability details and recommended fixes
+
+Docker security scanner with automated vulnerability patching via Trivy + Copacetic.
+# Container AI - MCP Server
 
 Docker security scanner with automated vulnerability patching via Trivy + Copacetic.
 
