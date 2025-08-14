@@ -29,16 +29,13 @@ To use this MCP server with VS Code Copilot on another repository:
 2. **Add MCP configuration** to your target repo's `.vscode/mcp.json`:
    ```json
    {
-     "mcpServers": {
+     "servers": {
        "container-ai": {
-         "command": "node",
-         "args": ["-e", "require('node-fetch')('http://localhost:8000/mcp').then(r=>r.json()).then(console.log)"],
-         "transport": {
-           "type": "http",
-           "url": "http://localhost:8000/mcp"
-         }
+         "url": "http://127.0.0.1:8000/mcp",
+         "type": "http"
        }
-     }
+     },
+     "inputs": []
    }
    ```
 
